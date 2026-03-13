@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
+use rand::seq::SliceRandom;
 
 use super::normalizer::MinMaxNormalizer;
 use super::{AnomalyDataset, Sample};
@@ -52,8 +53,11 @@ impl Ecg5000 {
         let train_path = find_file(&dir, "TRAIN")?;
         let test_path = find_file(&dir, "TEST")?;
 
-        let all_train_raw = parse_file(&train_path)?;
+        let mut all_train_raw = parse_file(&train_path)?;
         let all_test_raw = parse_file(&test_path)?;
+
+        // ECG beats are independent — shuffle so val gets a stratified mix.
+        all_train_raw.shuffle(&mut rand::thread_rng());
 
         // Fit normaliser on raw training features only.
         let train_features: Vec<Vec<f32>> = all_train_raw.iter().map(|(_, f)| f.clone()).collect();
