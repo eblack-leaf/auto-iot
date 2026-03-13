@@ -1,0 +1,7 @@
+/target
+data/*
+!data/.gitkeep
+artifacts/*.mpk
+artifacts/*.bin
+eda_output/
+Cargo.lock
