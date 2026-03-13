@@ -24,12 +24,12 @@ impl Synthetic {
     /// - `dim`: feature dimension (same role as sequence length for other datasets)
     /// - `n_total`: total number of samples
     /// - `anomaly_rate`: fraction of test samples that are anomalies (0.0–1.0)
-    pub fn generate(dim: usize, n_total: usize, anomaly_rate: f64) -> Self {
+    pub fn generate(dim: usize, n_total: usize, anomaly_rate: f64, val_split: f32) -> Self {
         let mut rng = StdRng::seed_from_u64(42);
         let normal = Normal::new(0.0_f32, 1.0).unwrap();
 
-        let split_train = (n_total as f32 * 0.70) as usize;
         let split_val = (n_total as f32 * 0.85) as usize;
+        let split_train = (split_val as f32 * (1.0 - val_split)) as usize;
 
         // Generate raw features
         let mut raw: Vec<Vec<f32>> = (0..n_total)

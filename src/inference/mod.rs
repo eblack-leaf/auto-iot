@@ -12,7 +12,7 @@ pub fn run_infer<B: Backend>(args: &InferArgs, device: &B::Device) -> Result<()>
     use crate::datasets;
     use crate::models::{DeepAEConfig, ShallowAEConfig};
 
-    let dataset = datasets::load(&args.dataset, &args.data_dir, args.window)?;
+    let dataset = datasets::load(&args.dataset, &args.data_dir, args.window, 0.1)?;
 
     println!(
         "\n── Inference: {} │ arch={} │ model={}",

@@ -15,7 +15,7 @@ pub fn run_eda(args: &EdaArgs) -> Result<()> {
     println!("\n══ EDA: {} ══", args.dataset);
 
     // Synthetic doesn't need a download.
-    let dataset = datasets::load(&args.dataset, &args.data_dir, args.window)?;
+    let dataset = datasets::load(&args.dataset, &args.data_dir, args.window, 0.1)?;
 
     let train = dataset.train_samples();
     let test = dataset.test_samples();

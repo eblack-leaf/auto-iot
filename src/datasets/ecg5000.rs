@@ -47,7 +47,7 @@ impl Ecg5000 {
     /// Load from disk and split into train / val / test.
     /// ECG5000_TRAIN (500 rows) → 80 % train, 20 % val.
     /// ECG5000_TEST  (4500 rows) → test.
-    pub fn load(data_dir: &str) -> Result<Self> {
+    pub fn load(data_dir: &str, val_split: f32) -> Result<Self> {
         let dir = PathBuf::from(data_dir).join("ecg5000");
         let train_path = find_file(&dir, "TRAIN")?;
         let test_path = find_file(&dir, "TEST")?;
@@ -65,7 +65,7 @@ impl Ecg5000 {
             .collect();
 
         // Remap to binary 0=normal 1=anomaly everywhere for consistency with other datasets.
-        let split = (all_train.len() as f32 * 0.8) as usize;
+        let split = (all_train.len() as f32 * (1.0 - val_split)) as usize;
         let train: Vec<Sample> = all_train[..split]
             .iter()
             .map(|(l, f)| Sample {

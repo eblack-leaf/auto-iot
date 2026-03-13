@@ -32,7 +32,7 @@ pub fn run_grid_search<B: AutodiffBackend>(
     );
 
     // Lazy-load the dataset once — shared across all grid points.
-    let dataset = datasets::load(&args.dataset, &args.data_dir, args.window)?;
+    let dataset = datasets::load(&args.dataset, &args.data_dir, args.window, args.val_split)?;
 
     let overall_pb = ProgressBar::new(n as u64);
     overall_pb.set_style(
@@ -63,6 +63,7 @@ pub fn run_grid_search<B: AutodiffBackend>(
             data_dir: args.data_dir.clone(),
             window: args.window,
             clean_train: args.clean_train,
+            val_split: args.val_split,
         };
 
         let result = match hyper.arch.as_str() {

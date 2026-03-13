@@ -23,7 +23,7 @@ use crate::training::metrics::mse_loss;
 
 /// Single-run training invoked from the CLI `train` subcommand.
 pub fn run_train<B: AutodiffBackend>(args: &TrainArgs, device: &B::Device) -> Result<TrainResult> {
-    let dataset = datasets::load(&args.dataset, &args.data_dir, args.window)?;
+    let dataset = datasets::load(&args.dataset, &args.data_dir, args.window, args.val_split)?;
 
     let cfg = TrainConfig {
         dataset: args.dataset.clone(),
@@ -38,6 +38,7 @@ pub fn run_train<B: AutodiffBackend>(args: &TrainArgs, device: &B::Device) -> Re
         data_dir: args.data_dir.clone(),
         window: args.window,
         clean_train: args.clean_train,
+        val_split: args.val_split,
     };
 
     let hyper = HyperPoint {

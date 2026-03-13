@@ -93,6 +93,10 @@ pub struct TrainArgs {
     /// Train only on samples labelled normal (label=0). Recommended for anomaly detection.
     #[arg(long)]
     pub clean_train: bool,
+
+    /// Fraction of the training file held out for validation (0.0–1.0).
+    #[arg(long, default_value = "0.1")]
+    pub val_split: f32,
 }
 
 // ── Infer ────────────────────────────────────────────────────────────────────

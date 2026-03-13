@@ -51,11 +51,11 @@ pub fn fetch(dataset: &str, output_dir: &str) -> Result<()> {
 }
 
 /// Load a dataset (already downloaded) and return a boxed trait object.
-pub fn load(name: &str, data_dir: &str, window: usize) -> Result<Box<dyn AnomalyDataset>> {
+pub fn load(name: &str, data_dir: &str, window: usize, val_split: f32) -> Result<Box<dyn AnomalyDataset>> {
     match name {
-        "ecg5000" => Ok(Box::new(Ecg5000::load(data_dir)?)),
-        "nab-taxi" => Ok(Box::new(NabTaxi::load(data_dir, window)?)),
-        "synthetic" => Ok(Box::new(Synthetic::generate(window, 3000, 0.05))),
+        "ecg5000" => Ok(Box::new(Ecg5000::load(data_dir, val_split)?)),
+        "nab-taxi" => Ok(Box::new(NabTaxi::load(data_dir, window, val_split)?)),
+        "synthetic" => Ok(Box::new(Synthetic::generate(window, 3000, 0.05, val_split))),
         other => anyhow::bail!(
             "Unknown dataset '{}'. Valid values: ecg5000, nab-taxi, synthetic",
             other

@@ -49,7 +49,7 @@ impl NabTaxi {
         Ok(())
     }
 
-    pub fn load(data_dir: &str, window: usize) -> Result<Self> {
+    pub fn load(data_dir: &str, window: usize, val_split: f32) -> Result<Self> {
         let dir = PathBuf::from(data_dir).join("nab_taxi");
 
         // Parse CSV
@@ -107,8 +107,9 @@ impl NabTaxi {
             .collect();
 
         // Normalise using training split features
-        let split_train = (raw_windows.len() as f32 * 0.70) as usize;
+        // Keep last 15% as test; split the rest into train/val by val_split.
         let split_val = (raw_windows.len() as f32 * 0.85) as usize;
+        let split_train = (split_val as f32 * (1.0 - val_split)) as usize;
 
         let norm = MinMaxNormalizer::fit(&raw_windows[..split_train]);
 
