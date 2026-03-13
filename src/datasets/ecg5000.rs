@@ -65,21 +65,31 @@ impl Ecg5000 {
             .collect();
 
         // Remap to binary 0=normal 1=anomaly everywhere for consistency with other datasets.
+        let to_sample = |(l, f): &(u8, Vec<f32>)| Sample {
+            features: f.clone(),
+            label: Some(if *l == 1 { 0 } else { 1 }),
+        };
+
         let split = (all_train.len() as f32 * (1.0 - val_split)) as usize;
-        let train: Vec<Sample> = all_train[..split]
+        let train_portion = &all_train[..split];
+        let val_portion = &all_train[split..];
+
+        // Normal samples from the train portion → training set.
+        // Anomaly samples from the train portion → recycled into validation so early
+        // stopping sees both classes and val MSE is a better proxy for AUROC.
+        let train: Vec<Sample> = train_portion
             .iter()
-            .map(|(l, f)| Sample {
-                features: f.clone(),
-                label: Some(if *l == 1 { 0 } else { 1 }),
-            })
+            .filter(|(l, _)| *l == 1)
+            .map(to_sample)
             .collect();
-        let val: Vec<Sample> = all_train[split..]
-            .iter()
-            .map(|(l, f)| Sample {
-                features: f.clone(),
-                label: Some(if *l == 1 { 0 } else { 1 }),
-            })
-            .collect();
+
+        let mut val: Vec<Sample> = val_portion.iter().map(to_sample).collect();
+        val.extend(
+            train_portion
+                .iter()
+                .filter(|(l, _)| *l != 1)
+                .map(to_sample),
+        );
 
         let test: Vec<Sample> = all_test_raw
             .into_iter()
