@@ -43,7 +43,7 @@ pub struct GridConfig {
 impl Default for GridConfig {
     fn default() -> Self {
         GridConfig {
-            learning_rates: vec![1e-3, 5e-4, 1e-4],
+            learning_rates: vec![1e-3, 5e-4],
             latent_dims: vec![4, 8, 16],
             hidden_dims: vec![32, 64, 128],
             architectures: vec!["shallow".into(), "deep".into()],

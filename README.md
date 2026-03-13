@@ -87,28 +87,49 @@ The best-validation checkpoint is saved to `artifacts/`.
 ### 5. Grid search
 
 ```bash
-# 54 combinations: 2 archs × 3 lrs × 3 latent × 3 hidden
-cargo run --release -- train --dataset nab-machine --grid-search --clean-train
+# 36 combinations: 2 archs × 2 lrs × 3 latent × 3 hidden
+cargo run --release -- train --dataset nab-machine --grid-search --clean-train \
+  --epochs 400 --batch-size 512 --patience 5
 ```
 
-Results are ranked by **AUROC** (when labels are available) and saved to `artifacts/grid_results.csv`.
+Results are ranked by a **composite score** (AUROC×0.6 + val_loss×0.25 + params×0.15) and saved to `artifacts/grid_results.csv`.
 
 Default grid:
 
-| Axis          | Values            |
-|---------------|-------------------|
-| Architecture  | shallow, deep     |
-| Learning rate | 1e-3, 5e-4, 1e-4  |
-| Latent dim    | 4, 8, 16          |
-| Hidden dim    | 32, 64, 128       |
-| Epochs        | 100 (max)         |
-| Patience      | 3                 |
+| Axis          | Values        |
+|---------------|---------------|
+| Architecture  | shallow, deep |
+| Learning rate | 1e-3, 5e-4    |
+| Latent dim    | 4, 8, 16      |
+| Hidden dim    | 32, 64, 128   |
+
+> **Note:** `lr=1e-4` is excluded — on nab-machine it consistently fails to converge within 400 epochs.
 
 > **Latent dim guidance:** for anomaly detection the bottleneck must be tight enough that
 > the model generalises the normal manifold rather than memorising everything. A good
 > starting point is 3–10% of input dim (latent ∈ {4, 8} for a window-64 input).
 > Large latent dims produce low val loss but near-random AUROC — the grid search makes
 > this trade-off visible.
+
+### Results — nab-machine (400 epochs, batch 512, patience 5)
+
+**With `--clean-train`** (trains on normal samples only):
+
+| arch | lr | latent | hidden | params | auroc | val_loss | score |
+|---|---|---|---|---|---|---|---|
+| shallow | 5e-4 | 16 | 32 | 5 264 | **0.9976** | 0.001071 | **0.9551** |
+| shallow | 1e-3 | 16 | 32 | 5 264 | 0.9949 | 0.000543 | 0.9328 |
+| shallow | 1e-3 | 8  | 64 | 9 416 | 0.9932 | 0.000720 | 0.8889 |
+
+**Without `--clean-train`** (anomaly prevalence <2% in train — both approaches work):
+
+| arch | lr | latent | hidden | params | auroc | val_loss | score |
+|---|---|---|---|---|---|---|---|
+| deep    | 5e-4 | 16 | 64 | 13 584 | **0.9995** | 0.000548 | **0.9393** |
+| shallow | 1e-3 | 16 | 32 | 5 264  | 0.9968 | 0.000526 | 0.9198 |
+| shallow | 5e-4 | 4  | 32 | 4 484  | 0.9952 | 0.000905 | 0.8810 |
+
+**Recommended model for edge deployment:** `shallow, latent=16, hidden=32` (5 264 params, ~21 KB f32) — top composite score with `--clean-train`, converges in ~200–350 epochs.
 
 ### 6. Inference
 
@@ -220,9 +241,9 @@ src/
     metrics.rs             Parameter counting, RAM footprint
   training/
     mod.rs
-    trainer.rs             Training loop (Adam, early stopping, checkpoint, post-train AUROC)
+    trainer.rs             Training loop (Adam + optional cosine LR, early stopping, checkpoint, post-train AUROC)
     early_stopping.rs      Patience-based early stopping
-    grid_search.rs         Cartesian-product sweep + AUROC-ranked table + CSV export
+    grid_search.rs         Cartesian-product sweep + composite-score-ranked table + CSV export
     metrics.rs             mse_loss(), reconstruction_errors() — shared with inference
   inference/
     mod.rs
@@ -250,7 +271,7 @@ cargo run --release -- fetch --dataset all
 # 3. Grid search (clean training recommended)
 cargo run --release -- train --dataset nab-machine --grid-search --clean-train
 
-# 4. Check artifacts/grid_results.csv — sorted by AUROC descending
+# 4. Check artifacts/grid_results.csv — sorted by composite score (auroc×0.6 + val×0.25 + params×0.15)
 
 # 5. Evaluate the best model
 cargo run --release -- infer \
