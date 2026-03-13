@@ -3,7 +3,6 @@
 //! Output CSV columns: z0, z1, …, z{L-1}, label
 //! This file is also the input consumed by tsne.rs.
 
-use std::fs;
 use std::path::PathBuf;
 
 use anyhow::Result;

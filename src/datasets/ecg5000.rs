@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 
-use super::normalizer::{MinMaxNormalizer, Normalizer};
+use super::normalizer::MinMaxNormalizer;
 use super::{AnomalyDataset, Sample};
 
 const DOWNLOAD_URL: &str =

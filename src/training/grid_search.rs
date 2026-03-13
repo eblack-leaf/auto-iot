@@ -10,7 +10,7 @@ use burn::tensor::backend::AutodiffBackend;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::cli::TrainArgs;
-use crate::config::{GridConfig, HyperPoint, TrainConfig, TrainResult};
+use crate::config::{GridConfig, TrainConfig, TrainResult};
 use crate::datasets;
 use crate::training::trainer::{train_deep, train_shallow};
 

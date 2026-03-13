@@ -5,10 +5,10 @@
 //! injected at the requested anomaly rate.
 
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 
-use super::normalizer::{MinMaxNormalizer, Normalizer};
+use super::normalizer::MinMaxNormalizer;
 use super::{AnomalyDataset, Sample};
 
 pub struct Synthetic {
@@ -63,7 +63,7 @@ impl Synthetic {
         };
 
         // Only the anomalously-injected test samples get label 1
-        let mut test: Vec<Sample> = raw[split_val..]
+        let test: Vec<Sample> = raw[split_val..]
             .iter()
             .enumerate()
             .map(|(i, f)| {

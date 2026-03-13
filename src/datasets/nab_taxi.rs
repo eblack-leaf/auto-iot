@@ -19,7 +19,7 @@ use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use serde_json::Value;
 
-use super::normalizer::{MinMaxNormalizer, Normalizer};
+use super::normalizer::MinMaxNormalizer;
 use super::{AnomalyDataset, Sample};
 
 const DATA_URL: &str =

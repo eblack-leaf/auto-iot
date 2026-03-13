@@ -4,7 +4,6 @@ mod cli;
 mod config;
 mod datasets;
 mod eda;
-mod error;
 mod inference;
 mod models;
 mod training;

@@ -1,9 +1,6 @@
 //! Evaluation metrics for anomaly detection:
 //! AUROC (trapezoidal rule), best-F1, precision, recall.
 
-/// Reconstruction error per sample — index mirrors the test set order.
-pub type AnomalyScore = f32;
-
 /// Compute the threshold at the given percentile of reconstruction errors.
 pub fn percentile_threshold(scores: &[f32], pct: f64) -> f32 {
     if scores.is_empty() {

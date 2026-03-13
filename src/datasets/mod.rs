@@ -5,7 +5,6 @@ pub mod synthetic;
 
 pub use ecg5000::Ecg5000;
 pub use nab_taxi::NabTaxi;
-pub use normalizer::{MinMaxNormalizer, ZScoreNormalizer};
 pub use synthetic::Synthetic;
 
 use anyhow::Result;

@@ -1,7 +1,6 @@
 //! Core training loop used by both single-run and grid-search modes.
 
 use std::fs;
-use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -213,24 +212,17 @@ where
 /// Trait that both ShallowAE and DeepAE implement, allowing generic dispatch.
 pub trait AeForward<B: Backend> {
     fn ae_forward(&self, x: Tensor<B, 2>) -> Tensor<B, 2>;
-    fn ae_encode(&self, x: Tensor<B, 2>) -> Tensor<B, 2>;
 }
 
 impl<B: Backend> AeForward<B> for ShallowAE<B> {
     fn ae_forward(&self, x: Tensor<B, 2>) -> Tensor<B, 2> {
         self.forward(x)
     }
-    fn ae_encode(&self, x: Tensor<B, 2>) -> Tensor<B, 2> {
-        self.encode(x)
-    }
 }
 
 impl<B: Backend> AeForward<B> for DeepAE<B> {
     fn ae_forward(&self, x: Tensor<B, 2>) -> Tensor<B, 2> {
         self.forward(x)
-    }
-    fn ae_encode(&self, x: Tensor<B, 2>) -> Tensor<B, 2> {
-        self.encode(x)
     }
 }
 

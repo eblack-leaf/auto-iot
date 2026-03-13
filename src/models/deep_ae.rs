@@ -41,9 +41,6 @@ impl DeepAEConfig {
         }
     }
 
-    pub fn h2(&self) -> usize {
-        (self.hidden_dim / 2).max(self.latent_dim + 1)
-    }
 }
 
 impl<B: Backend> DeepAE<B> {
