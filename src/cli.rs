@@ -29,7 +29,7 @@ pub enum Commands {
 
 #[derive(Args, Clone, Debug)]
 pub struct FetchArgs {
-    /// Dataset to download: ecg5000 | nab-taxi | all
+    /// Dataset to download: nab-machine | nab-taxi | all
     #[arg(short, long, default_value = "all")]
     pub dataset: String,
 
@@ -42,8 +42,8 @@ pub struct FetchArgs {
 
 #[derive(Args, Clone, Debug)]
 pub struct TrainArgs {
-    /// Dataset: ecg5000 | nab-taxi | synthetic
-    #[arg(short, long, default_value = "ecg5000")]
+    /// Dataset: nab-machine | nab-taxi | synthetic
+    #[arg(short, long, default_value = "nab-machine")]
     pub dataset: String,
 
     /// Architecture: shallow | deep
@@ -94,6 +94,10 @@ pub struct TrainArgs {
     #[arg(long)]
     pub clean_train: bool,
 
+    /// Learning rate scheduler: none | cosine
+    #[arg(long, default_value = "none")]
+    pub scheduler: String,
+
     /// Fraction of the training file held out for validation (0.0–1.0).
     #[arg(long, default_value = "0.1")]
     pub val_split: f32,
@@ -107,8 +111,8 @@ pub struct InferArgs {
     #[arg(short, long)]
     pub model: String,
 
-    /// Dataset to score: ecg5000 | nab-taxi | synthetic
-    #[arg(short, long, default_value = "ecg5000")]
+    /// Dataset to score: nab-machine | nab-taxi | synthetic
+    #[arg(short, long, default_value = "nab-machine")]
     pub dataset: String,
 
     /// Architecture the checkpoint was trained with: shallow | deep
@@ -140,8 +144,8 @@ pub struct InferArgs {
 
 #[derive(Args, Clone, Debug)]
 pub struct EdaArgs {
-    /// Dataset to inspect: ecg5000 | nab-taxi | synthetic
-    #[arg(short, long, default_value = "ecg5000")]
+    /// Dataset to inspect: nab-machine | nab-taxi | synthetic
+    #[arg(short, long, default_value = "nab-machine")]
     pub dataset: String,
 
     /// Data directory

@@ -5,3 +5,5 @@ artifacts/*.mpk
 artifacts/*.bin
 eda_output/
 Cargo.lock
+clean-run
+.idea

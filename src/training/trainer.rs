@@ -4,6 +4,8 @@ use std::fs;
 use std::time::Instant;
 
 use anyhow::Result;
+use burn::lr_scheduler::cosine::{CosineAnnealingLrScheduler, CosineAnnealingLrSchedulerConfig};
+use burn::lr_scheduler::LrScheduler;
 use burn::optim::{AdamConfig, GradientsParams, Optimizer};
 use burn::prelude::*;
 use burn::record::CompactRecorder;
@@ -39,6 +41,7 @@ pub fn run_train<B: AutodiffBackend>(args: &TrainArgs, device: &B::Device) -> Re
         window: args.window,
         clean_train: args.clean_train,
         val_split: args.val_split,
+        scheduler: args.scheduler.clone(),
     };
 
     let hyper = HyperPoint {
@@ -109,6 +112,16 @@ where
 
     let mut optimizer = AdamConfig::new().init::<B, M>();
     let mut stopper = EarlyStopping::new(cfg.patience);
+    let mut cosine_sched = if cfg.scheduler == "cosine" {
+        Some(
+            CosineAnnealingLrSchedulerConfig::new(hyper.lr, cfg.epochs)
+                .with_min_lr(hyper.lr / 100.0)
+                .init()
+                .map_err(|e| anyhow::anyhow!("Scheduler init: {}", e))?,
+        )
+    } else {
+        None
+    };
     let artifact_path = artifact_path(&cfg, &hyper);
 
     use crate::models::metrics::{param_bytes, print_param_summary};
@@ -181,12 +194,16 @@ where
         total_epochs = epoch + 1;
 
         // ── train ──────────────────────────────────────────────────────────
+        let lr = cosine_sched
+            .as_mut()
+            .map(|s: &mut CosineAnnealingLrScheduler| s.step())
+            .unwrap_or(hyper.lr);
         let train_loss = run_epoch::<B, M>(
             &mut model,
             Some(&mut optimizer),
             train_data,
             cfg.batch_size,
-            hyper.lr,
+            lr,
             device,
         );
 
@@ -214,8 +231,8 @@ where
             StopResult::Continue => {}
             StopResult::Stop => {
                 epoch_pb.finish_with_message(format!(
-                    "early stop at epoch {} (patience={})",
-                    epoch, cfg.patience
+                    "early stop at epoch {} (patience={})  train={:.6}  val={:.6}",
+                    epoch, cfg.patience, train_loss, val_loss
                 ));
                 break;
             }

@@ -57,13 +57,14 @@ pub fn run_grid_search<B: AutodiffBackend>(
             latent_dim: hyper.latent_dim,
             hidden_dim: hyper.hidden_dim,
             lr: hyper.lr,
-            batch_size: grid.batch_size,
+            batch_size: args.batch_size,
             patience: grid.patience,
             artifact_dir: args.artifact_dir.clone(),
             data_dir: args.data_dir.clone(),
             window: args.window,
             clean_train: args.clean_train,
             val_split: args.val_split,
+            scheduler: args.scheduler.clone(),
         };
 
         let result = match hyper.arch.as_str() {
@@ -77,7 +78,15 @@ pub fn run_grid_search<B: AutodiffBackend>(
         };
 
         match result {
-            Ok(r) => results.push(r),
+            Ok(r) => {
+                overall_pb.set_message(format!(
+                    "{} arch={} lr={:.0e} ld={} hd={}  auroc={}  val={:.6}",
+                    args.dataset, r.hyper.arch, r.hyper.lr, r.hyper.latent_dim, r.hyper.hidden_dim,
+                    r.auroc.map(|a| format!("{:.4}", a)).unwrap_or("n/a".into()),
+                    r.best_val_loss,
+                ));
+                results.push(r);
+            }
             Err(e) => eprintln!("  [error] grid point {}: {}", idx, e),
         }
 
@@ -92,34 +101,64 @@ pub fn run_grid_search<B: AutodiffBackend>(
     Ok(())
 }
 
+fn composite_score(r: &TrainResult, has_auroc: bool,
+    auroc_min: f64, auroc_max: f64,
+    val_min: f64,  val_max: f64,
+    param_min: f64, param_max: f64,
+) -> f64 {
+    let norm = |v: f64, lo: f64, hi: f64| {
+        if (hi - lo).abs() < f64::EPSILON { 0.5 } else { (v - lo) / (hi - lo) }
+    };
+    // All components scaled to [0,1] where 1 = best.
+    let auroc_score = if has_auroc {
+        norm(r.auroc.unwrap_or(0.0), auroc_min, auroc_max)
+    } else {
+        0.0
+    };
+    let val_score   = 1.0 - norm(r.best_val_loss, val_min, val_max);
+    let param_score = 1.0 - norm(r.param_count as f64, param_min, param_max);
+
+    if has_auroc {
+        0.60 * auroc_score + 0.25 * val_score + 0.15 * param_score
+    } else {
+        0.70 * val_score   + 0.30 * param_score
+    }
+}
+
 fn print_results_table(results: &[TrainResult]) {
     if results.is_empty() {
         println!("No results to display.");
         return;
     }
 
-    // Rank by AUROC descending when available, otherwise val_loss ascending.
     let has_auroc = results.iter().any(|r| r.auroc.is_some());
-    let mut sorted = results.to_vec();
-    if has_auroc {
-        sorted.sort_by(|a, b| {
-            b.auroc.unwrap_or(0.0).partial_cmp(&a.auroc.unwrap_or(0.0)).unwrap()
-        });
-    } else {
-        sorted.sort_by(|a, b| a.best_val_loss.partial_cmp(&b.best_val_loss).unwrap());
-    }
 
-    let rank_label = if has_auroc { "AUROC ↓ best" } else { "val_loss ↑ best" };
-    println!("\n══ Grid Search Results (ranked by {}) ══", rank_label);
+    // Compute ranges for normalisation.
+    let auroc_vals: Vec<f64> = results.iter().filter_map(|r| r.auroc).collect();
+    let auroc_min = auroc_vals.iter().cloned().fold(f64::INFINITY, f64::min);
+    let auroc_max = auroc_vals.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let val_min  = results.iter().map(|r| r.best_val_loss).fold(f64::INFINITY, f64::min);
+    let val_max  = results.iter().map(|r| r.best_val_loss).fold(f64::NEG_INFINITY, f64::max);
+    let param_min = results.iter().map(|r| r.param_count as f64).fold(f64::INFINITY, f64::min);
+    let param_max = results.iter().map(|r| r.param_count as f64).fold(f64::NEG_INFINITY, f64::max);
+
+    let score = |r: &TrainResult| {
+        composite_score(r, has_auroc, auroc_min, auroc_max, val_min, val_max, param_min, param_max)
+    };
+
+    let mut sorted = results.to_vec();
+    sorted.sort_by(|a, b| score(b).partial_cmp(&score(a)).unwrap());
+
+    println!("\n══ Grid Search Results (ranked by composite: auroc×0.6 + val×0.25 + params×0.15) ══");
     println!(
-        "{:<8} {:<6} {:>6} {:>7} {:>7} {:>8} {:>7} {:>7} {:>7}",
-        "arch", "lr", "latent", "hidden", "params", "val_loss", "auroc", "epoch", "secs"
+        "{:<8} {:<6} {:>6} {:>7} {:>7} {:>8} {:>7} {:>7} {:>7} {:>6}",
+        "arch", "lr", "latent", "hidden", "params", "val_loss", "auroc", "epoch", "secs", "score"
     );
-    println!("{}", "─".repeat(78));
+    println!("{}", "─".repeat(85));
 
     for r in &sorted {
         println!(
-            "{:<8} {:<6.0e} {:>6} {:>7} {:>7} {:>8.6} {:>7} {:>7} {:>7.1}",
+            "{:<8} {:<6.0e} {:>6} {:>7} {:>7} {:>8.6} {:>7} {:>7} {:>7.1} {:>6.3}",
             r.hyper.arch,
             r.hyper.lr,
             r.hyper.latent_dim,
@@ -129,15 +168,18 @@ fn print_results_table(results: &[TrainResult]) {
             r.auroc.map(|a| format!("{:.4}", a)).unwrap_or("n/a".into()),
             r.best_epoch,
             r.train_secs,
+            score(r),
         );
     }
 
     if let Some(best) = sorted.first() {
-        let metric = if has_auroc {
-            format!("auroc={:.4}", best.auroc.unwrap())
-        } else {
-            format!("val_loss={:.6}", best.best_val_loss)
-        };
+        let metric = format!(
+            "auroc={}  val={:.6}  params={}  score={:.3}",
+            best.auroc.map(|a| format!("{:.4}", a)).unwrap_or("n/a".into()),
+            best.best_val_loss,
+            best.param_count,
+            score(best),
+        );
         println!(
             "\n★ Best: {} arch={} lr={:.0e} latent={} hidden={} → {}",
             best.dataset,
@@ -155,14 +197,25 @@ fn save_results_csv(results: &[TrainResult], artifact_dir: &str) -> Result<()> {
     if results.is_empty() {
         return Ok(());
     }
+
+    let has_auroc = results.iter().any(|r| r.auroc.is_some());
+    let auroc_vals: Vec<f64> = results.iter().filter_map(|r| r.auroc).collect();
+    let auroc_min = auroc_vals.iter().cloned().fold(f64::INFINITY, f64::min);
+    let auroc_max = auroc_vals.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let val_min  = results.iter().map(|r| r.best_val_loss).fold(f64::INFINITY, f64::min);
+    let val_max  = results.iter().map(|r| r.best_val_loss).fold(f64::NEG_INFINITY, f64::max);
+    let param_min = results.iter().map(|r| r.param_count as f64).fold(f64::INFINITY, f64::min);
+    let param_max = results.iter().map(|r| r.param_count as f64).fold(f64::NEG_INFINITY, f64::max);
+
     fs::create_dir_all(artifact_dir)?;
     let path = PathBuf::from(artifact_dir).join("grid_results.csv");
     let mut wtr = csv::Writer::from_path(&path)?;
     wtr.write_record([
         "dataset", "arch", "lr", "latent_dim", "hidden_dim", "params",
-        "best_val_loss", "auroc", "best_epoch", "total_epochs", "train_secs", "artifact_path",
+        "best_val_loss", "auroc", "best_epoch", "total_epochs", "train_secs", "score", "artifact_path",
     ])?;
     for r in results {
+        let s = composite_score(r, has_auroc, auroc_min, auroc_max, val_min, val_max, param_min, param_max);
         wtr.write_record(&[
             &r.dataset,
             &r.hyper.arch,
@@ -175,6 +228,7 @@ fn save_results_csv(results: &[TrainResult], artifact_dir: &str) -> Result<()> {
             &r.best_epoch.to_string(),
             &r.total_epochs.to_string(),
             &r.train_secs.to_string(),
+            &format!("{:.4}", s),
             &r.artifact_path,
         ])?;
     }

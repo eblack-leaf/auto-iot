@@ -25,6 +25,7 @@ pub struct TrainConfig {
     pub window: usize,
     pub clean_train: bool,
     pub val_split: f32,
+    pub scheduler: String,
 }
 
 /// Configuration for the hyperparameter grid search.

@@ -33,7 +33,7 @@ All labels use the same convention: `0 = normal, 1 = anomaly`.
 
 | Name       | Domain              | Seq len             | Labels | Source |
 |------------|---------------------|---------------------|--------|--------|
-| `ecg5000`  | ECG heartbeat       | 140                 | Yes    | [UCR Time Series Archive](https://www.timeseriesclassification.com/aeon-toolkit/ECG5000.zip) |
+| `nab-machine` | IoT machine temperature | configurable window | Yes    | [Numenta NAB (GitHub)](https://github.com/numenta/NAB) |
 | `nab-taxi` | NYC taxi passengers | configurable window | Yes    | [Numenta NAB (GitHub)](https://github.com/numenta/NAB) |
 | `synthetic`| Gaussian + outliers | configurable window | Yes    | Generated in-memory |
 
@@ -60,7 +60,7 @@ cargo build --release
 cargo run --release -- fetch --dataset all
 
 # Or individually
-cargo run --release -- fetch --dataset ecg5000
+cargo run --release -- fetch --dataset nab-machine
 cargo run --release -- fetch --dataset nab-taxi
 ```
 
@@ -68,7 +68,7 @@ cargo run --release -- fetch --dataset nab-taxi
 
 ```bash
 cargo run --release -- train \
-  --dataset ecg5000 \
+  --dataset nab-machine \
   --arch shallow \
   --epochs 100 \
   --latent-dim 8 \
@@ -88,7 +88,7 @@ The best-validation checkpoint is saved to `artifacts/`.
 
 ```bash
 # 54 combinations: 2 archs × 3 lrs × 3 latent × 3 hidden
-cargo run --release -- train --dataset ecg5000 --grid-search --clean-train
+cargo run --release -- train --dataset nab-machine --grid-search --clean-train
 ```
 
 Results are ranked by **AUROC** (when labels are available) and saved to `artifacts/grid_results.csv`.
@@ -106,7 +106,7 @@ Default grid:
 
 > **Latent dim guidance:** for anomaly detection the bottleneck must be tight enough that
 > the model generalises the normal manifold rather than memorising everything. A good
-> starting point is 3–10% of input dim (latent ∈ {4, 8} for ECG5000's 140-dim input).
+> starting point is 3–10% of input dim (latent ∈ {4, 8} for a window-64 input).
 > Large latent dims produce low val loss but near-random AUROC — the grid search makes
 > this trade-off visible.
 
@@ -114,8 +114,8 @@ Default grid:
 
 ```bash
 cargo run --release -- infer \
-  --model artifacts/ecg5000_shallow_ld8_hd64_lr1e-3 \
-  --dataset ecg5000 \
+  --model artifacts/nab-machine_shallow_ld8_hd64_lr1e-3 \
+  --dataset nab-machine \
   --arch shallow \
   --hidden-dim 64 \
   --latent-dim 8 \
@@ -130,12 +130,12 @@ Prints reconstruction error histogram, AUROC, precision, recall, and F1 (when la
 
 ```bash
 # Basic stats + histogram
-cargo run --release -- eda --dataset ecg5000
+cargo run --release -- eda --dataset nab-machine
 
 # With latent-space export (requires a saved model)
 cargo run --release -- eda \
-  --dataset ecg5000 \
-  --model artifacts/ecg5000_shallow_ld8_hd64_lr1e-3 \
+  --dataset nab-machine \
+  --model artifacts/nab-machine_shallow_ld8_hd64_lr1e-3 \
   --arch shallow \
   --hidden-dim 64 \
   --latent-dim 8 \
@@ -143,8 +143,8 @@ cargo run --release -- eda \
 
 # With t-SNE (slow on large datasets)
 cargo run --release -- eda \
-  --dataset ecg5000 \
-  --model artifacts/ecg5000_shallow_ld8_hd64_lr1e-3 \
+  --dataset nab-machine \
+  --model artifacts/nab-machine_shallow_ld8_hd64_lr1e-3 \
   --arch shallow --tsne
 ```
 
@@ -175,7 +175,7 @@ Every training run prints parameter count and RAM footprint:
 Grid search results include a `params` column so you can compare model size against AUROC —
 the core trade-off for edge deployment.
 
-Approximate footprints (f32, ECG5000 input=140):
+Approximate footprints (f32, window=64 input):
 
 | arch    | hidden | latent | params | RAM     |
 |---------|--------|--------|--------|---------|
@@ -209,7 +209,7 @@ src/
   config.rs                Shared config types (TrainConfig, GridConfig, TrainResult)
   datasets/
     mod.rs                 AnomalyDataset trait, fetch/load dispatch
-    ecg5000.rs             UCR ECG5000 download + parsing
+    nab_machine.rs         NAB Machine Temperature download + windowing
     nab_taxi.rs            NAB NYC Taxi download + windowing
     synthetic.rs           In-memory Gaussian + outlier generator
     normalizer.rs          MinMaxNormalizer (fit on train, applied to all splits)
@@ -248,24 +248,24 @@ git clone <repo-url> && cd auto-iot
 cargo run --release -- fetch --dataset all
 
 # 3. Grid search (clean training recommended)
-cargo run --release -- train --dataset ecg5000 --grid-search --clean-train
+cargo run --release -- train --dataset nab-machine --grid-search --clean-train
 
 # 4. Check artifacts/grid_results.csv — sorted by AUROC descending
 
 # 5. Evaluate the best model
 cargo run --release -- infer \
   --model <artifact_path from CSV> \
-  --dataset ecg5000 --arch <arch> \
+  --dataset nab-machine --arch <arch> \
   --hidden-dim <hd> --latent-dim <ld>
 
 # 6. Inspect the latent space
-cargo run --release -- eda --dataset ecg5000 \
+cargo run --release -- eda --dataset nab-machine \
   --model <artifact_path from CSV> --arch <arch> \
   --hidden-dim <hd> --latent-dim <ld> --tsne
 ```
 
 All randomness is seeded (`StdRng::seed_from_u64(42)`) for the synthetic dataset.
-ECG5000 and NAB use deterministic splits. Results are fully reproducible across
+nab-machine and nab-taxi use deterministic splits. Results are fully reproducible across
 machines with the same Burn version.
 
 ---
