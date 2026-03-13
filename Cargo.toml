@@ -32,11 +32,8 @@ csv = "1"
 
 # Error handling
 anyhow = "1"
-thiserror = "1"
 
 # Archive extraction
-flate2 = "1"
-zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # Random numbers (synthetic dataset + shuffling)
 rand = "0.8"
