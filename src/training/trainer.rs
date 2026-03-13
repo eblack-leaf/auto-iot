@@ -150,10 +150,19 @@ where
     // If val contains anomalies their rising reconstruction error would
     // trigger early stopping immediately as the model specialises on normals.
     let all_val = dataset.val_samples();
-    let val_normal_owned: Vec<_> = if all_val.iter().any(|s| s.label.is_some()) {
-        all_val.iter().filter(|s| s.label == Some(0)).cloned().collect()
-    } else {
-        all_val.to_vec()
+    let val_normal_owned: Vec<_> = {
+        let normals: Vec<_> = all_val
+            .iter()
+            .filter(|s| s.label == Some(0) || s.label.is_none())
+            .cloned()
+            .collect();
+        if normals.is_empty() {
+            // Val split landed on all-anomaly rows (e.g. class-sorted file) — use all.
+            println!("  warn: val normal filter returned 0 samples, using full val set");
+            all_val.to_vec()
+        } else {
+            normals
+        }
     };
     let val_data: &[_] = &val_normal_owned;
 
