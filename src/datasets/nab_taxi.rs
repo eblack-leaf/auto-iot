@@ -124,12 +124,9 @@ impl NabTaxi {
                 .collect()
         };
 
-        // Normal windows from train portion → training set. Anomalies discarded.
-        // Val is normal-only so val MSE cleanly tracks normal manifold generalisation.
         let train: Vec<Sample> = raw_windows[..split_train]
             .iter()
             .zip(labels[..split_train].iter())
-            .filter(|(_, &l)| l == 0)
             .map(|(w, &l)| Sample { features: norm.transform(w), label: Some(l) })
             .collect();
 

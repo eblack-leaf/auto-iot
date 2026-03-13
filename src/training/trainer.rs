@@ -143,7 +143,19 @@ where
     } else {
         dataset.train_samples()
     };
-    let val_data = dataset.val_samples();
+    // Early stopping measures reconstruction on normal samples only.
+    // If val contains anomalies their rising reconstruction error would
+    // trigger early stopping immediately as the model specialises on normals.
+    // Early stopping measures reconstruction on normal samples only.
+    // If val contains anomalies their rising reconstruction error would
+    // trigger early stopping immediately as the model specialises on normals.
+    let all_val = dataset.val_samples();
+    let val_normal_owned: Vec<_> = if all_val.iter().any(|s| s.label.is_some()) {
+        all_val.iter().filter(|s| s.label == Some(0)).cloned().collect()
+    } else {
+        all_val.to_vec()
+    };
+    let val_data: &[_] = &val_normal_owned;
 
     let epoch_pb = ProgressBar::new(cfg.epochs as u64);
     epoch_pb.set_style(

@@ -74,15 +74,7 @@ impl Ecg5000 {
         let train_portion = &all_train[..split];
         let val_portion = &all_train[split..];
 
-        // Normal samples from train portion → training set.
-        // Anomaly samples from train portion are discarded; val is normal-only so
-        // val MSE cleanly measures generalisation on the normal manifold.
-        let train: Vec<Sample> = train_portion
-            .iter()
-            .filter(|(l, _)| *l == 1)
-            .map(to_sample)
-            .collect();
-
+        let train: Vec<Sample> = train_portion.iter().map(to_sample).collect();
         let val: Vec<Sample> = val_portion.iter().map(to_sample).collect();
 
         let test: Vec<Sample> = all_test_raw
