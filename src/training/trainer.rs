@@ -188,6 +188,27 @@ where
     }
 
     let train_secs = t_start.elapsed().as_secs_f64();
+
+    // ── Post-training AUROC on test set ────────────────────────────────────
+    let auroc = if dataset.has_labels() {
+        let test_data = dataset.test_samples();
+        let inner = model.valid();
+        let errors = {
+            let mut all: Vec<f32> = Vec::with_capacity(test_data.len());
+            for chunk in test_data.chunks(cfg.batch_size) {
+                let batch = samples_to_tensor::<B::InnerBackend>(chunk, &device.clone().into());
+                let out = inner.ae_forward(batch.clone());
+                let errs = crate::training::metrics::reconstruction_errors(out, batch);
+                all.extend(errs);
+            }
+            all
+        };
+        let labels: Vec<u8> = test_data.iter().map(|s| s.label.unwrap_or(0)).collect();
+        crate::inference::evaluator::compute_auroc(&errors, &labels)
+    } else {
+        None
+    };
+
     let result = TrainResult {
         hyper,
         dataset: cfg.dataset.clone(),
@@ -197,11 +218,16 @@ where
         param_count,
         train_secs,
         artifact_path: artifact_path.clone(),
+        auroc,
     };
 
     println!(
-        "└─ done  best_val={:.6}  epoch={}  time={:.1}s  → {}",
-        result.best_val_loss, result.best_epoch, result.train_secs, artifact_path
+        "└─ done  best_val={:.6}  auroc={}  epoch={}  time={:.1}s  → {}",
+        result.best_val_loss,
+        result.auroc.map(|a| format!("{:.4}", a)).unwrap_or("n/a".into()),
+        result.best_epoch,
+        result.train_secs,
+        artifact_path
     );
 
     Ok(result)

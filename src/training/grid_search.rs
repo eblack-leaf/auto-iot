@@ -96,39 +96,54 @@ fn print_results_table(results: &[TrainResult]) {
         return;
     }
 
+    // Rank by AUROC descending when available, otherwise val_loss ascending.
+    let has_auroc = results.iter().any(|r| r.auroc.is_some());
     let mut sorted = results.to_vec();
-    sorted.sort_by(|a, b| a.best_val_loss.partial_cmp(&b.best_val_loss).unwrap());
+    if has_auroc {
+        sorted.sort_by(|a, b| {
+            b.auroc.unwrap_or(0.0).partial_cmp(&a.auroc.unwrap_or(0.0)).unwrap()
+        });
+    } else {
+        sorted.sort_by(|a, b| a.best_val_loss.partial_cmp(&b.best_val_loss).unwrap());
+    }
 
-    println!("\n══ Grid Search Results (ranked by validation loss) ══");
+    let rank_label = if has_auroc { "AUROC ↓ best" } else { "val_loss ↑ best" };
+    println!("\n══ Grid Search Results (ranked by {}) ══", rank_label);
     println!(
-        "{:<8} {:<4} {:>8} {:>7} {:>7} {:>8} {:>7} {:>7}",
-        "arch", "lr", "latent", "hidden", "params", "val_loss", "epoch", "secs"
+        "{:<8} {:<6} {:>6} {:>7} {:>7} {:>8} {:>7} {:>7} {:>7}",
+        "arch", "lr", "latent", "hidden", "params", "val_loss", "auroc", "epoch", "secs"
     );
-    println!("{}", "─".repeat(68));
+    println!("{}", "─".repeat(78));
 
     for r in &sorted {
         println!(
-            "{:<8} {:<4.0e} {:>8} {:>7} {:>7} {:>8.6} {:>7} {:>7.1}",
+            "{:<8} {:<6.0e} {:>6} {:>7} {:>7} {:>8.6} {:>7} {:>7} {:>7.1}",
             r.hyper.arch,
             r.hyper.lr,
             r.hyper.latent_dim,
             r.hyper.hidden_dim,
             r.param_count,
             r.best_val_loss,
+            r.auroc.map(|a| format!("{:.4}", a)).unwrap_or("n/a".into()),
             r.best_epoch,
             r.train_secs,
         );
     }
 
     if let Some(best) = sorted.first() {
+        let metric = if has_auroc {
+            format!("auroc={:.4}", best.auroc.unwrap())
+        } else {
+            format!("val_loss={:.6}", best.best_val_loss)
+        };
         println!(
-            "\n★ Best: {} arch={} lr={:.0e} latent={} hidden={} → val_loss={:.6}",
+            "\n★ Best: {} arch={} lr={:.0e} latent={} hidden={} → {}",
             best.dataset,
             best.hyper.arch,
             best.hyper.lr,
             best.hyper.latent_dim,
             best.hyper.hidden_dim,
-            best.best_val_loss,
+            metric,
         );
         println!("  Saved to: {}", best.artifact_path);
     }
@@ -142,17 +157,8 @@ fn save_results_csv(results: &[TrainResult], artifact_dir: &str) -> Result<()> {
     let path = PathBuf::from(artifact_dir).join("grid_results.csv");
     let mut wtr = csv::Writer::from_path(&path)?;
     wtr.write_record([
-        "dataset",
-        "arch",
-        "lr",
-        "latent_dim",
-        "hidden_dim",
-        "params",
-        "best_val_loss",
-        "best_epoch",
-        "total_epochs",
-        "train_secs",
-        "artifact_path",
+        "dataset", "arch", "lr", "latent_dim", "hidden_dim", "params",
+        "best_val_loss", "auroc", "best_epoch", "total_epochs", "train_secs", "artifact_path",
     ])?;
     for r in results {
         wtr.write_record(&[
@@ -163,6 +169,7 @@ fn save_results_csv(results: &[TrainResult], artifact_dir: &str) -> Result<()> {
             &r.hyper.hidden_dim.to_string(),
             &r.param_count.to_string(),
             &r.best_val_loss.to_string(),
+            &r.auroc.map(|a| format!("{:.6}", a)).unwrap_or("".into()),
             &r.best_epoch.to_string(),
             &r.total_epochs.to_string(),
             &r.train_secs.to_string(),

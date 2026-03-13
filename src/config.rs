@@ -84,4 +84,6 @@ pub struct TrainResult {
     pub param_count: usize,
     pub train_secs: f64,
     pub artifact_path: String,
+    /// AUROC on the test split — None if the dataset has no labels.
+    pub auroc: Option<f64>,
 }

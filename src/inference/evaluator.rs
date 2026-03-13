@@ -12,20 +12,15 @@ pub fn percentile_threshold(scores: &[f32], pct: f64) -> f32 {
     sorted[idx.min(sorted.len() - 1)]
 }
 
-/// Compute and print AUROC + best-threshold F1 / precision / recall.
-pub fn evaluate(scores: &[f32], labels: &[u8], threshold: f32) {
-    assert_eq!(scores.len(), labels.len(), "scores and labels must match");
-
-    let n = scores.len();
+/// Compute AUROC from reconstruction errors and binary labels (1=anomaly, 0=normal).
+/// Returns None if there are no positive samples.
+pub fn compute_auroc(scores: &[f32], labels: &[u8]) -> Option<f64> {
     let n_pos = labels.iter().filter(|&&l| l == 1).count();
-    let n_neg = n - n_pos;
-
-    if n_pos == 0 {
-        println!("  No positive (anomaly) samples in labels — AUROC undefined.");
-        return;
+    let n_neg = labels.len() - n_pos;
+    if n_pos == 0 || n_neg == 0 {
+        return None;
     }
 
-    // ── AUROC ─────────────────────────────────────────────────────────────
     let mut pairs: Vec<(f32, u8)> = scores.iter().copied().zip(labels.iter().copied()).collect();
     pairs.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap()); // descending score
 
@@ -36,19 +31,33 @@ pub fn evaluate(scores: &[f32], labels: &[u8], threshold: f32) {
     let mut auc = 0.0_f64;
 
     for (_, label) in &pairs {
-        if *label == 1 {
-            tp += 1;
-        } else {
-            fp += 1;
-        }
+        if *label == 1 { tp += 1; } else { fp += 1; }
         let tpr = tp as f64 / n_pos as f64;
         let fpr = fp as f64 / n_neg as f64;
         auc += (fpr - prev_fpr) * (tpr + prev_tpr) / 2.0;
         prev_tpr = tpr;
         prev_fpr = fpr;
     }
+    Some(auc)
+}
 
-    // ── Threshold metrics ─────────────────────────────────────────────────
+/// Compute and print AUROC + best-threshold F1 / precision / recall.
+pub fn evaluate(scores: &[f32], labels: &[u8], threshold: f32) {
+    assert_eq!(scores.len(), labels.len(), "scores and labels must match");
+
+    let n = scores.len();
+    let n_pos = labels.iter().filter(|&&l| l == 1).count();
+    let n_neg = n - n_pos;
+
+    let auc = match compute_auroc(scores, labels) {
+        Some(v) => v,
+        None => {
+            println!("  No positive (anomaly) samples in labels — AUROC undefined.");
+            return;
+        }
+    };
+
+    // ── Threshold metrics (at the supplied percentile threshold) ──────────
     let predicted: Vec<u8> = scores.iter().map(|&s| if s >= threshold { 1 } else { 0 }).collect();
     let tp_f1 = labels
         .iter()
