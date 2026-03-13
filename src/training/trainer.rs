@@ -317,9 +317,8 @@ pub fn samples_to_tensor<B: Backend>(samples: &[Sample], device: &B::Device) -> 
 fn artifact_path(cfg: &TrainConfig, hyper: &HyperPoint) -> String {
     let lr_str = format!("{:.0e}", hyper.lr).replace("e-0", "e-").replace("e+0", "e");
     format!(
-        "{}/{}_{}_{}_ld{}_hd{}_lr{}",
+        "{}/{}_{}_ld{}_hd{}_lr{}",
         cfg.artifact_dir,
-        cfg.dataset,
         cfg.dataset.replace('-', "_"),
         hyper.arch,
         hyper.latent_dim,
