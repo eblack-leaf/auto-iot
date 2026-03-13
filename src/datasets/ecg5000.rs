@@ -64,19 +64,20 @@ impl Ecg5000 {
             .map(|(l, f)| (l, norm.transform(&f)))
             .collect();
 
+        // Remap to binary 0=normal 1=anomaly everywhere for consistency with other datasets.
         let split = (all_train.len() as f32 * 0.8) as usize;
         let train: Vec<Sample> = all_train[..split]
             .iter()
             .map(|(l, f)| Sample {
                 features: f.clone(),
-                label: Some(*l),
+                label: Some(if *l == 1 { 0 } else { 1 }),
             })
             .collect();
         let val: Vec<Sample> = all_train[split..]
             .iter()
             .map(|(l, f)| Sample {
                 features: f.clone(),
-                label: Some(*l),
+                label: Some(if *l == 1 { 0 } else { 1 }),
             })
             .collect();
 

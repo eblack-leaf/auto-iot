@@ -37,6 +37,7 @@ pub fn run_train<B: AutodiffBackend>(args: &TrainArgs, device: &B::Device) -> Re
         artifact_dir: args.artifact_dir.clone(),
         data_dir: args.data_dir.clone(),
         window: args.window,
+        clean_train: args.clean_train,
     };
 
     let hyper = HyperPoint {
@@ -124,7 +125,23 @@ where
         param_bytes(param_count) as f64 / 1024.0
     );
 
-    let train_data = dataset.train_samples();
+    let train_samples_owned: Vec<_>;
+    let train_data: &[_] = if cfg.clean_train {
+        train_samples_owned = dataset
+            .train_samples()
+            .iter()
+            .filter(|s| s.label == Some(0))
+            .cloned()
+            .collect();
+        println!(
+            "  clean_train: {}/{} samples kept (label=0 only)",
+            train_samples_owned.len(),
+            dataset.train_samples().len()
+        );
+        &train_samples_owned
+    } else {
+        dataset.train_samples()
+    };
     let val_data = dataset.val_samples();
 
     let epoch_pb = ProgressBar::new(cfg.epochs as u64);

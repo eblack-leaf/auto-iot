@@ -89,6 +89,10 @@ pub struct TrainArgs {
     /// Sliding-window length for NAB / synthetic datasets
     #[arg(long, default_value = "64")]
     pub window: usize,
+
+    /// Train only on samples labelled normal (label=0). Recommended for anomaly detection.
+    #[arg(long)]
+    pub clean_train: bool,
 }
 
 // ── Infer ────────────────────────────────────────────────────────────────────

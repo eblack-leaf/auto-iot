@@ -23,6 +23,7 @@ pub struct TrainConfig {
     pub artifact_dir: String,
     pub data_dir: String,
     pub window: usize,
+    pub clean_train: bool,
 }
 
 /// Configuration for the hyperparameter grid search.

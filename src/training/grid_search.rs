@@ -62,6 +62,7 @@ pub fn run_grid_search<B: AutodiffBackend>(
             artifact_dir: args.artifact_dir.clone(),
             data_dir: args.data_dir.clone(),
             window: args.window,
+            clean_train: args.clean_train,
         };
 
         let result = match hyper.arch.as_str() {
