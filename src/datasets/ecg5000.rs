@@ -17,7 +17,7 @@ use super::normalizer::{MinMaxNormalizer, Normalizer};
 use super::{AnomalyDataset, Sample};
 
 const DOWNLOAD_URL: &str =
-    "http://www.timeseriesclassification.com/Downloads/ECG5000.zip";
+    "https://www.timeseriesclassification.com/aeon-toolkit/ECG5000.zip";
 
 pub const SEQ_LEN: usize = 140;
 
@@ -170,6 +170,12 @@ fn download_file(url: &str, dest: &Path) -> Result<()> {
         .bytes()
         .with_context(|| format!("Reading body from {url}"))?;
 
+    if bytes.len() < 1024 {
+        anyhow::bail!(
+            "Download from {url} returned only {} bytes — likely an error page, not the archive.",
+            bytes.len()
+        );
+    }
     pb.finish_with_message(format!("Downloaded {} bytes", bytes.len()));
     fs::write(dest, &bytes)?;
     Ok(())

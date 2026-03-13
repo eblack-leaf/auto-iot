@@ -31,7 +31,7 @@ Activation: **ReLU** in hidden layers, **Sigmoid** on the output (matches MinMax
 
 | Name       | Domain              | Seq len | Labels | Source |
 |------------|---------------------|---------|--------|--------|
-| `ecg5000`  | ECG heartbeat       | 140     | Yes (binary) | [UCR Time Series Archive](http://www.timeseriesclassification.com/Downloads/ECG5000.zip) |
+| `ecg5000`  | ECG heartbeat       | 140     | Yes (binary) | [UCR Time Series Archive](https://www.timeseriesclassification.com/aeon-toolkit/ECG5000.zip) |
 | `nab-taxi` | NYC taxi passengers | configurable window | Yes | [Numenta NAB (GitHub)](https://github.com/numenta/NAB) |
 | `synthetic`| Gaussian + outliers | configurable window | Yes | Generated in-memory |
 
