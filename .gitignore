@@ -7,3 +7,4 @@ eda_output/
 Cargo.lock
 clean-run
 .idea
+.cargo
